@@ -4,6 +4,9 @@ import sys
 import shutil
 import jdatetime
 import os
+import threading
+import time
+from itertools import cycle
 
 # ----------------------------------------------------------------------
 # Locate the 'toobit' executable
@@ -60,20 +63,50 @@ command = [
 ]
 
 # ----------------------------------------------------------------------
-# Run command and save output
+# Spinner animation (runs in a separate thread)
 # ----------------------------------------------------------------------
+def spinner(stop_event):
+    """Display a rotating spinner until stop_event is set."""
+    chars = cycle(['|', '/', '-', '\\'])
+    msg = "Fetching data..."
+    while not stop_event.is_set():
+        sys.stdout.write(f'\r{msg} {next(chars)}')
+        sys.stdout.flush()
+        time.sleep(0.1)
+    # Clear the line when done
+    sys.stdout.write('\r' + ' ' * (len(msg) + 2) + '\r')
+    sys.stdout.flush()
+
+# ----------------------------------------------------------------------
+# Run command with animated spinner
+# ----------------------------------------------------------------------
+stop_event = threading.Event()
+spinner_thread = threading.Thread(target=spinner, args=(stop_event,))
+
+print(f"Running: {' '.join(command)}")
+spinner_thread.start()
+
 try:
-    print(f"Running: {' '.join(command)}")
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     json_output = result.stdout
 except subprocess.CalledProcessError as e:
+    stop_event.set()
+    spinner_thread.join()
     print(f"Command failed with exit code {e.returncode}", file=sys.stderr)
     print(f"stderr: {e.stderr}", file=sys.stderr)
     sys.exit(1)
 except FileNotFoundError:
+    stop_event.set()
+    spinner_thread.join()
     print(f"Error: The executable '{toobit_path}' was not found.", file=sys.stderr)
     sys.exit(1)
+else:
+    stop_event.set()
+    spinner_thread.join()
 
+# ----------------------------------------------------------------------
+# Save JSON output
+# ----------------------------------------------------------------------
 filename = f"{persian_date_str}.json"
 try:
     with open(filename, "w", encoding="utf-8") as f:
