@@ -53,9 +53,9 @@ persian_date_str = today.strftime("%Y-%m-%d")
 command = [
     toobit_path,
     "market", "klines",
-    "--symbol", "BTCUSDT",
-    "--interval", "4h",
-    "--limit", "120",
+    "--symbol", input("Please input a coin you want (e.g. BTCUSDT ETHUSDT ...): "),
+    "--interval", input("What is your timeframe like 1m 5m 15m 1h 4h : "),
+    "--limit", input("How many candels and data do you want 1 10 120 : "),
     "--json"
 ]
 
