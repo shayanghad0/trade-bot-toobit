@@ -78,7 +78,7 @@ else:
     iran_date = jdatetime.date.today().strftime("%Y-%m-%d")
     print(f"Could not extract date from filename, using today: {iran_date}")
 
-output_file = f"decode-{iran_date}.json"
+output_file = f"candles.json"
 
 # ----------------------------------------------------------------------
 # Spinner animation (runs in a separate thread)

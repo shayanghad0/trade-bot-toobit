@@ -115,22 +115,29 @@ def smart_money(df, swing_length=5):
     choch_bear = np.zeros(n, dtype=bool)
     last_swing_high = np.full(n, np.nan)
     last_swing_low = np.full(n, np.nan)
-    trend = np.zeros(n, dtype=int)  # 1=bull, -1=bear
+    swing_high_idx = np.full(n, -1, dtype=int)
+    swing_low_idx = np.full(n, -1, dtype=int)
+    trend = np.zeros(n, dtype=int)
 
     current_sh = np.nan
     current_sl = np.nan
+    current_sh_idx = -1
+    current_sl_idx = -1
     current_trend = 0
 
     for i in range(1, n):
         if not np.isnan(ph_vals[i]):
             current_sh = ph_vals[i]
+            current_sh_idx = i
         if not np.isnan(pl_vals[i]):
             current_sl = pl_vals[i]
+            current_sl_idx = i
 
         last_swing_high[i] = current_sh
         last_swing_low[i] = current_sl
+        swing_high_idx[i] = current_sh_idx
+        swing_low_idx[i] = current_sl_idx
 
-        # Bullish breakout (close above last swing high)
         if not np.isnan(current_sh) and c[i] > current_sh and c[i - 1] <= current_sh:
             if current_trend == -1:
                 choch_bull[i] = True
@@ -138,7 +145,6 @@ def smart_money(df, swing_length=5):
                 bos_bull[i] = True
             current_trend = 1
 
-        # Bearish breakout (close below last swing low)
         if not np.isnan(current_sl) and c[i] < current_sl and c[i - 1] >= current_sl:
             if current_trend == 1:
                 choch_bear[i] = True
@@ -149,21 +155,19 @@ def smart_money(df, swing_length=5):
         trend[i] = current_trend
 
     # --- Order Blocks ---
-    bull_ob = np.full(n, np.nan)  # bullish OB top
-    bull_ob_low = np.full(n, np.nan)  # bullish OB bottom
-    bear_ob = np.full(n, np.nan)  # bearish OB top
-    bear_ob_low = np.full(n, np.nan)  # bearish OB bottom
+    bull_ob = np.full(n, np.nan)
+    bull_ob_low = np.full(n, np.nan)
+    bear_ob = np.full(n, np.nan)
+    bear_ob_low = np.full(n, np.nan)
 
     for i in range(1, n):
         if bos_bull[i] or choch_bull[i]:
-            # Last bearish candle before bullish breakout
             for j in range(i - 1, max(i - 6, -1), -1):
                 if c[j] < o[j]:
                     bull_ob[i] = h[j]
                     bull_ob_low[i] = l[j]
                     break
         if bos_bear[i] or choch_bear[i]:
-            # Last bullish candle before bearish breakout
             for j in range(i - 1, max(i - 6, -1), -1):
                 if c[j] > o[j]:
                     bear_ob[i] = h[j]
@@ -177,11 +181,9 @@ def smart_money(df, swing_length=5):
     fvg_bear_bot = np.full(n, np.nan)
 
     for i in range(2, n):
-        # Bullish FVG: low[i] > high[i-2]
         if l[i] > h[i - 2]:
             fvg_bull_top[i] = l[i]
             fvg_bull_bot[i] = h[i - 2]
-        # Bearish FVG: high[i] < low[i-2]
         if h[i] < l[i - 2]:
             fvg_bear_top[i] = l[i - 2]
             fvg_bear_bot[i] = h[i]
@@ -194,6 +196,7 @@ def smart_money(df, swing_length=5):
         "fvg_bull_top": fvg_bull_top, "fvg_bull_bot": fvg_bull_bot,
         "fvg_bear_top": fvg_bear_top, "fvg_bear_bot": fvg_bear_bot,
         "last_swing_high": last_swing_high, "last_swing_low": last_swing_low,
+        "swing_high_idx": swing_high_idx, "swing_low_idx": swing_low_idx,
     }
 
 
@@ -376,54 +379,116 @@ def export_candles(json_file, output_file="chart.png"):
 
     ax = axes[0]
 
-    # ---- Draw BOS/CHoCH labels ---- #
+    # ---- Draw Structure Lines (BOS/CHoCH) ---- #
+    for i in range(len(df)):
+        # Bullish BOS line from swing low to breakout
+        if sm["bos_bull"][i] or sm["choch_bull"][i]:
+            start_idx = sm["swing_low_idx"][i]
+            level = sm["last_swing_low"][i]
+            if start_idx >= 0:
+                color = "#2157f3" if sm["bos_bull"][i] else "#00ff68"
+                style = "-" if sm["bos_bull"][i] else "--"
+                ax.plot([start_idx, i], [level, level], color=color, linewidth=1.5, linestyle=style, alpha=0.9)
+
+        # Bearish BOS line from swing high to breakout
+        if sm["bos_bear"][i] or sm["choch_bear"][i]:
+            start_idx = sm["swing_high_idx"][i]
+            level = sm["last_swing_high"][i]
+            if start_idx >= 0:
+                color = "#F23645" if sm["bos_bear"][i] else "#ff6600"
+                style = "-" if sm["bos_bear"][i] else "--"
+                ax.plot([start_idx, i], [level, level], color=color, linewidth=1.5, linestyle=style, alpha=0.9)
+
+    # ---- Draw BOS/CHoCH Labels ---- #
     for i in range(len(df)):
         if sm["bos_bull"][i]:
-            ax.text(i, df["High"].iloc[i], "BOS", fontsize=7, color="green",
-                    ha="center", va="bottom", fontweight="bold")
+            ax.text(i, df["Low"].iloc[i] * 0.998, " BOS ", fontsize=8, color="white", fontweight="bold",
+                    ha="center", va="top",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="#2157f3", edgecolor="none", alpha=0.9))
         if sm["bos_bear"][i]:
-            ax.text(i, df["Low"].iloc[i], "BOS", fontsize=7, color="red",
-                    ha="center", va="top", fontweight="bold")
+            ax.text(i, df["High"].iloc[i] * 1.002, " BOS ", fontsize=8, color="white", fontweight="bold",
+                    ha="center", va="bottom",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="#F23645", edgecolor="none", alpha=0.9))
         if sm["choch_bull"][i]:
-            ax.text(i, df["High"].iloc[i], "CHoCH", fontsize=7, color="lime",
-                    ha="center", va="bottom", fontweight="bold")
+            ax.text(i, df["Low"].iloc[i] * 0.998, " CHoCH ", fontsize=8, color="white", fontweight="bold",
+                    ha="center", va="top",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="#00ff68", edgecolor="none", alpha=0.9))
         if sm["choch_bear"][i]:
-            ax.text(i, df["Low"].iloc[i], "CHoCH", fontsize=7, color="orange",
-                    ha="center", va="top", fontweight="bold")
+            ax.text(i, df["High"].iloc[i] * 1.002, " CHoCH ", fontsize=8, color="white", fontweight="bold",
+                    ha="center", va="bottom",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="#ff6600", edgecolor="none", alpha=0.9))
 
-    # ---- Draw Order Blocks ---- #
+    # ---- Draw Order Blocks (extend until mitigated) ---- #
+    ob_drawn_bull = []
+    ob_drawn_bear = []
+
     for i in range(len(df)):
-        # Bullish Order Block
         if not np.isnan(sm["bull_ob"][i]):
-            top = sm["bull_ob"][i]
-            bot = sm["bull_ob_low"][i]
-            rect = plt.Rectangle((i - 0.5, bot), 5, top - bot,
-                                 facecolor="#3179f5", alpha=0.15, edgecolor="#3179f5", linewidth=0.5)
-            ax.add_patch(rect)
-        # Bearish Order Block
+            ob_drawn_bull.append((i, sm["bull_ob"][i], sm["bull_ob_low"][i]))
         if not np.isnan(sm["bear_ob"][i]):
-            top = sm["bear_ob"][i]
-            bot = sm["bear_ob_low"][i]
-            rect = plt.Rectangle((i - 0.5, bot), 5, top - bot,
-                                 facecolor="#f77c80", alpha=0.15, edgecolor="#f77c80", linewidth=0.5)
+            ob_drawn_bear.append((i, sm["bear_ob"][i], sm["bear_ob_low"][i]))
+
+    h = df["High"].values
+    l = df["Low"].values
+
+    # Bullish OBs — extend until price dips below OB low (mitigated)
+    for start_i, top, bot in ob_drawn_bull:
+        end_i = len(df)
+        for j in range(start_i + 1, len(df)):
+            if l[j] < bot:
+                end_i = j
+                break
+        width = end_i - start_i
+        if width > 0:
+            rect = plt.Rectangle((start_i - 0.5, bot), width, top - bot,
+                                 facecolor="#2157f3", alpha=0.12, edgecolor="#2157f3",
+                                 linewidth=0.8, linestyle="--")
             ax.add_patch(rect)
 
-    # ---- Draw Fair Value Gaps ---- #
+    # Bearish OBs — extend until price rises above OB top (mitigated)
+    for start_i, top, bot in ob_drawn_bear:
+        end_i = len(df)
+        for j in range(start_i + 1, len(df)):
+            if h[j] > top:
+                end_i = j
+                break
+        width = end_i - start_i
+        if width > 0:
+            rect = plt.Rectangle((start_i - 0.5, bot), width, top - bot,
+                                 facecolor="#F23645", alpha=0.12, edgecolor="#F23645",
+                                 linewidth=0.8, linestyle="--")
+            ax.add_patch(rect)
+
+    # ---- Draw Fair Value Gaps (extend until filled) ---- #
     for i in range(len(df)):
-        # Bullish FVG
         if not np.isnan(sm["fvg_bull_top"][i]):
             top = sm["fvg_bull_top"][i]
             bot = sm["fvg_bull_bot"][i]
-            rect = plt.Rectangle((i - 0.5, bot), 3, top - bot,
-                                 facecolor="#00ff68", alpha=0.12, edgecolor="#00ff68", linewidth=0.5)
-            ax.add_patch(rect)
-        # Bearish FVG
+            end_i = len(df)
+            for j in range(i + 1, len(df)):
+                if l[j] <= bot:
+                    end_i = j
+                    break
+            width = end_i - i
+            if width > 0:
+                rect = plt.Rectangle((i - 0.5, bot), width, top - bot,
+                                     facecolor="#00ff68", alpha=0.12, edgecolor="#00ff68",
+                                     linewidth=0.8, linestyle="--")
+                ax.add_patch(rect)
         if not np.isnan(sm["fvg_bear_top"][i]):
             top = sm["fvg_bear_top"][i]
             bot = sm["fvg_bear_bot"][i]
-            rect = plt.Rectangle((i - 0.5, bot), 3, top - bot,
-                                 facecolor="#ff0008", alpha=0.12, edgecolor="#ff0008", linewidth=0.5)
-            ax.add_patch(rect)
+            end_i = len(df)
+            for j in range(i + 1, len(df)):
+                if h[j] >= top:
+                    end_i = j
+                    break
+            width = end_i - i
+            if width > 0:
+                rect = plt.Rectangle((i - 0.5, bot), width, top - bot,
+                                     facecolor="#ff0008", alpha=0.12, edgecolor="#ff0008",
+                                     linewidth=0.8, linestyle="--")
+                ax.add_patch(rect)
     box_props = dict(boxstyle="round,pad=0.4", facecolor="#1a1a2e", edgecolor="#555555", alpha=0.9)
 
     lines = [
