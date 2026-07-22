@@ -12,6 +12,9 @@ plt.rcParams.update({
     "font.size": 10,
     "axes.titlesize": 12,
     "axes.labelsize": 10,
+    "figure.facecolor": "#131722",
+    "axes.facecolor": "#131722",
+    "savefig.facecolor": "#131722",
 })
 
 
@@ -370,12 +373,15 @@ def export_candles(json_file, output_file="chart.png"):
         style=style,
         volume=True,
         addplot=ap,
-        figsize=(20, 16),
-        panel_ratios=(4, 1),
+        figsize=(22, 16),
+        panel_ratios=(5, 1),
         tight_layout=True,
         xrotation=0,
         returnfig=True,
     )
+
+    fig.patch.set_facecolor("#131722")
+    axes[0].set_facecolor("#131722")
 
     ax = axes[0]
 
@@ -489,8 +495,9 @@ def export_candles(json_file, output_file="chart.png"):
                                      facecolor="#ff0008", alpha=0.12, edgecolor="#ff0008",
                                      linewidth=0.8, linestyle="--")
                 ax.add_patch(rect)
-    box_props = dict(boxstyle="round,pad=0.4", facecolor="#1a1a2e", edgecolor="#555555", alpha=0.9)
+    box_props = dict(boxstyle="round,pad=0.5", facecolor="#1a1a2e", edgecolor="#444444", alpha=0.92)
 
+    # ---- SuperTrend Table ---- #
     lines = [
         ("ST 1", d1),
         ("ST 2", d2),
@@ -501,13 +508,12 @@ def export_candles(json_file, output_file="chart.png"):
     for label, direction in lines:
         arrow = "▲" if direction == 1 else "▼"
         status = "Up" if direction == 1 else "Down"
-        color = "green" if direction == 1 else "red"
         table_text += f"{label} : {arrow} {status}\n"
 
     ax.text(
-        0.02, 0.98, table_text.strip(),
+        0.01, 0.98, table_text.strip(),
         transform=ax.transAxes,
-        fontsize=11,
+        fontsize=10,
         fontfamily="monospace",
         fontweight="bold",
         verticalalignment="top",
@@ -515,6 +521,38 @@ def export_candles(json_file, output_file="chart.png"):
         bbox=box_props,
         color="white",
     )
+
+    # ---- Legend (bottom-right) ---- #
+    legend_text = (
+        "━━━ Legend ━━━━━━━━━━━━━━━━━\n"
+        "─── SuperTrend (Green/Red)\n"
+        "─── RSI (Blue)\n"
+        "━━━ Pivot (Aqua)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "[BOS]     Break of Structure\n"
+        "[CHoCH]   Change of Character\n"
+        "▓▓▓ Bullish OB (Blue)\n"
+        "▓▓▓ Bearish OB (Red)\n"
+        "▓▓▓ Bullish FVG (Green)\n"
+        "▓▓▓ Bearish FVG (Red)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+    ax.text(
+        0.99, 0.02, legend_text,
+        transform=ax.transAxes,
+        fontsize=8,
+        fontfamily="monospace",
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        bbox=dict(boxstyle="round,pad=0.5", facecolor="#1a1a2e", edgecolor="#444444", alpha=0.92),
+        color="white",
+        linespacing=1.4,
+    )
+
+    # ---- Title ---- #
+    fig.suptitle("Smart Money Concepts  •  Triple SuperTrend  •  RSI",
+                 fontsize=14, fontweight="bold", color="white", y=0.98)
 
     fig.savefig(
         output_file,
