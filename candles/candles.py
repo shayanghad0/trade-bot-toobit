@@ -75,6 +75,26 @@ def rsi(close, length=14):
     return 100 - (100 / (1 + rs))
 
 
+def pivots(df, left=5, right=5):
+    high = df["High"].values
+    low = df["Low"].values
+    n = len(high)
+
+    pivot_high = np.full(n, np.nan)
+    pivot_low = np.full(n, np.nan)
+
+    for i in range(left, n - right):
+        if high[i] == max(high[i - left : i + right + 1]):
+            pivot_high[i] = high[i]
+        if low[i] == min(low[i - left : i + right + 1]):
+            pivot_low[i] = low[i]
+
+    return (
+        pd.Series(pivot_high, index=df.index),
+        pd.Series(pivot_low, index=df.index),
+    )
+
+
 def export_candles(json_file, output_file="chart.png"):
     # Read JSON
     with open(json_file, "r", encoding="utf-8") as f:
@@ -208,10 +228,18 @@ def export_candles(json_file, output_file="chart.png"):
 
     # ---------------- RSI ---------------- #
     rsi_val = rsi(df["Close"], length=14)
-    # Scale RSI (0-100) to price range so it fits on candle panel
     price_min = df["Low"].min()
     price_max = df["High"].max()
     rsi_scaled = (rsi_val / 100) * (price_max - price_min) + price_min
+
+    # ---------------- Pivots ---------------- #
+    ph, pl = pivots(df, left=5, right=5)
+
+    # Carry forward last pivot high/low to draw horizontal lines
+    ph_line = ph.copy()
+    pl_line = pl.copy()
+    ph_line = ph_line.ffill()
+    pl_line = pl_line.ffill()
 
     ap = [
         mpf.make_addplot(st1_up, color="green", width=2),
@@ -221,6 +249,10 @@ def export_candles(json_file, output_file="chart.png"):
         mpf.make_addplot(st3_up, color="green", width=2),
         mpf.make_addplot(st3_dn, color="red",   width=2),
         mpf.make_addplot(rsi_scaled, color="blue", width=1.5),
+        mpf.make_addplot(ph_line, color="aqua",   width=2.5),
+        mpf.make_addplot(pl_line, color="aqua", width=2.5),
+        mpf.make_addplot(ph, type="scatter", marker="v", markersize=80, color="red"),
+        mpf.make_addplot(pl, type="scatter", marker="^", markersize=80, color="green"),
     ]
 
     # Get last direction for each SuperTrend
