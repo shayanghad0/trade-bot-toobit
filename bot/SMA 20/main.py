@@ -4436,33 +4436,227 @@ class BeautifulChartGenerator:
         ax.grid(True, color=C["grid"], alpha=0.2, linewidth=0.3)
         ax.set_xlim(-0.5, n - 0.3)
 
+    def _draw_data_section(self, fig, result, indicators, enhanced_data, bt_result):
+        """Draw ALL analysis data below the charts."""
+        BG, BG2, GRD = C["bg"], C["bg2"], C["grid"]
+        TXT, TD, GRN = C["text"], C["text_dim"], C["green"]
+        RED, BLU, ORG = C["red"], C["blue"], C["orange"]
+        PRP, TEA, CYN = C["purple"], C["teal"], C["cyan"]
+        YEL, PNK, WHT = C["yellow"], C["pink"], C["white"]
+        current = self.closes[-1]
+        sig_color = GRN if "BUY" in result.signal_type.value else RED if "SELL" in result.signal_type.value else ORG
+
+        def _box(ax, x, y, w, h, fc=BG2, ec=GRD, lw=1, alpha=0.95):
+            ax.add_patch(plt.Rectangle((x, y), w, h, facecolor=fc, edgecolor=ec, linewidth=lw,
+                                       alpha=alpha, transform=ax.transAxes, clip_on=False, zorder=1))
+
+        def _txt(ax, x, y, t, fs=9, color=TXT, ha="left", va="top", fw="normal", ff="monospace"):
+            ax.text(x, y, t, fontsize=fs, color=color, ha=ha, va=va, fontweight=fw, fontfamily=ff,
+                    transform=ax.transAxes, clip_on=False)
+
+        # --- Row 1: Indicators | S/R | Signal Reasons ---
+        ax_r1 = fig.add_axes([0.02, 0.38, 0.96, 0.13])
+        ax_r1.set_xlim(0, 1); ax_r1.set_ylim(0, 1); ax_r1.axis("off"); ax_r1.set_facecolor(BG)
+
+        # Indicators (left 33%)
+        _box(ax_r1, 0.0, 0.0, 0.32, 1.0)
+        _txt(ax_r1, 0.02, 0.96, "TECHNICAL INDICATORS", fs=10, color=CYN, fw="bold")
+        inds = [
+            f"SMA20:   {indicators.sma20:.2f}",
+            f"SMA20 Slope: {indicators.sma20 - indicators.sma20_prev:+.2f}",
+            f"RSI(14): {indicators.rsi:.1f}",
+            f"MACD:    {indicators.macd_line:.4f}",
+            f"MACD Sig:{indicators.macd_signal:.4f}",
+            f"BB Upper: {indicators.bb_upper:.2f}",
+            f"BB Lower: {indicators.bb_lower:.2f}",
+            f"BB Width: {indicators.bb_width:.2f}%",
+            f"ATR(14): {indicators.atr:.2f} ({indicators.atr_percent:.2f}%)",
+            f"ADX:     {indicators.adx:.1f}",
+            f"CCI(20): {indicators.cci:.1f}",
+            f"MFI(14): {indicators.mfi:.1f}",
+            f"VWAP:    {indicators.vwap:.2f}",
+            f"Stoch K: {indicators.stoch_k:.1f}",
+            f"Stoch D: {indicators.stoch_d:.1f}",
+            f"Momentum:{indicators.momentum:.2f}",
+            f"ROC:     {indicators.roc:.2f}%",
+        ]
+        for j, line in enumerate(inds):
+            _txt(ax_r1, 0.02, 0.88 - j * 0.055, line, fs=7, color=TXT)
+
+        # S/R (middle 33%)
+        _box(ax_r1, 0.34, 0.0, 0.32, 1.0)
+        _txt(ax_r1, 0.36, 0.96, "SUPPORT / RESISTANCE", fs=10, color=TEA, fw="bold")
+        _txt(ax_r1, 0.36, 0.90, f"Current: {current:.2f}", fs=8, color=BLU, fw="bold")
+        y = 0.84
+        if result.resistance_levels:
+            for i, r in enumerate(result.resistance_levels[:5]):
+                d = (r - current) / current * 100
+                _txt(ax_r1, 0.36, y, f"R{i+1}: {r:.2f}  (+{d:.2f}%)", fs=7, color=RED)
+                y -= 0.05
+        y -= 0.02
+        if result.support_levels:
+            for i, s in enumerate(result.support_levels[:5]):
+                d = (current - s) / current * 100
+                _txt(ax_r1, 0.36, y, f"S{i+1}: {s:.2f}  (-{d:.2f}%)", fs=7, color=GRN)
+                y -= 0.05
+
+        # Signal Reasons (right 33%)
+        _box(ax_r1, 0.68, 0.0, 0.32, 1.0)
+        _txt(ax_r1, 0.70, 0.96, "SIGNAL REASONS", fs=10, color=PNK, fw="bold")
+        for j, r in enumerate(result.reasons[:12]):
+            is_bull = any(w in r.upper() for w in ["BULL", "BUY", "ABOVE", "POSITIVE", "UP", "MARKUP", "ACCUM"])
+            is_bear = any(w in r.upper() for w in ["BEAR", "SELL", "BELOW", "NEGATIVE", "DOWN", "DISTRIBUTION"])
+            clr = GRN if is_bull else RED if is_bear else ORG
+            marker = "+" if is_bull else "-" if is_bear else "~"
+            _txt(ax_r1, 0.70, 0.88 - j * 0.07, f"{marker} {r[:48]}", fs=6.5, color=clr)
+
+        # --- Row 2: Confidence | Multi-TF | Fibonacci ---
+        ax_r2 = fig.add_axes([0.02, 0.22, 0.96, 0.14])
+        ax_r2.set_xlim(0, 1); ax_r2.set_ylim(0, 1); ax_r2.axis("off"); ax_r2.set_facecolor(BG)
+
+        # Confidence Score
+        _box(ax_r2, 0.0, 0.0, 0.32, 1.0)
+        _txt(ax_r2, 0.02, 0.96, "CONFIDENCE SCORE", fs=10, color=CYN, fw="bold")
+        if enhanced_data and 'confidence' in enhanced_data:
+            conf = enhanced_data['confidence']
+            _txt(ax_r2, 0.02, 0.88, f"Score: {conf.get('total_score', 0)}/{conf.get('max_possible', 100)}  "
+                  f"({conf.get('confidence_pct', 0):.0f}%)  {conf.get('rating', 'N/A')}", fs=8, color=WHT)
+            factors = conf.get('factors', {})
+            bar_y = 0.80
+            for fname, fval in list(factors.items())[:8]:
+                bw = fval / 10 * 0.28
+                fclr = CYN if fval >= 5 else ORG if fval >= 3 else RED
+                ax_r2.add_patch(plt.Rectangle((0.02, bar_y - 0.008), bw, 0.014,
+                                 facecolor=fclr, alpha=0.6, transform=ax_r2.transAxes, clip_on=False))
+                _txt(ax_r2, 0.02 + bw + 0.01, bar_y - 0.005, f"{fval}", fs=6, color=fclr)
+                _txt(ax_r2, 0.02, bar_y - 0.005, fname[:14], fs=6, color=TD)
+                bar_y -= 0.08
+
+        # Multi-Timeframe
+        _box(ax_r2, 0.34, 0.0, 0.32, 1.0)
+        _txt(ax_r2, 0.36, 0.96, "MULTI-TIMEFRAME", fs=10, color=CYN, fw="bold")
+        if enhanced_data and 'multi_timeframe' in enhanced_data:
+            tf_data = enhanced_data['multi_timeframe']
+            y = 0.88
+            for tf, d in tf_data.items():
+                trend = d['trend']
+                tclr = GRN if trend == 'BULLISH' else RED if trend == 'BEARISH' else ORG
+                arrow = ">>>" if trend == 'BULLISH' else "<<<" if trend == 'BEARISH' else "==="
+                _txt(ax_r2, 0.36, y, f"{tf:4s}: {trend:10s} {arrow}", fs=8, color=tclr)
+                y -= 0.12
+
+        # Fibonacci
+        _box(ax_r2, 0.68, 0.0, 0.32, 1.0)
+        _txt(ax_r2, 0.70, 0.96, "FIBONACCI LEVELS", fs=10, color=PRP, fw="bold")
+        if enhanced_data and 'fibonacci' in enhanced_data:
+            fib = enhanced_data['fibonacci']
+            _txt(ax_r2, 0.70, 0.88, f"Position: {fib.get('position', {}).get('price_position', 'N/A')}", fs=8, color=WHT)
+            y = 0.80
+            for name, level in list(fib.get('levels', {}).items())[:6]:
+                _txt(ax_r2, 0.70, y, f"{name}: {level:.2f}", fs=7, color=PRP)
+                y -= 0.10
+
+        # --- Row 3: Volatility | Regime | Backtest ---
+        ax_r3 = fig.add_axes([0.02, 0.06, 0.96, 0.14])
+        ax_r3.set_xlim(0, 1); ax_r3.set_ylim(0, 1); ax_r3.axis("off"); ax_r3.set_facecolor(BG)
+
+        # Volatility
+        _box(ax_r3, 0.0, 0.0, 0.32, 1.0)
+        _txt(ax_r3, 0.02, 0.96, "VOLATILITY & RISK", fs=10, color=ORG, fw="bold")
+        if enhanced_data and 'volatility' in enhanced_data:
+            vol = enhanced_data['volatility']
+            vlines = [
+                f"HV:       {vol.get('historical_volatility', 0):.2f}%",
+                f"Sharpe:   {vol.get('sharpe_ratio', 0):.2f}",
+                f"Sortino:  {vol.get('sortino_ratio', 0):.2f}",
+                f"MaxDD:    {vol.get('max_drawdown', {}).get('max_drawdown_pct', 0):.2f}%",
+                f"VaR(95):  {vol.get('var_95', 0):.2f}%",
+            ]
+            for j, line in enumerate(vlines):
+                _txt(ax_r3, 0.02, 0.88 - j * 0.14, line, fs=7, color=TXT)
+
+        # Market Regime
+        _box(ax_r3, 0.34, 0.0, 0.32, 1.0)
+        _txt(ax_r3, 0.36, 0.96, "MARKET REGIME", fs=10, color=TEA, fw="bold")
+        if enhanced_data and 'regime' in enhanced_data:
+            r = enhanced_data['regime']
+            rlines = [
+                f"Regime:   {r.get('regime', 'N/A')}",
+                f"Strategy: {r.get('strategy', 'N/A')}",
+                f"Trend:    {r.get('trend_regime', 'N/A')}",
+                f"Vol Reg:  {r.get('volatility_regime', 'N/A')}",
+                f"BB Squeeze: {r.get('bb_squeeze', 'NO')}",
+            ]
+            for j, line in enumerate(rlines):
+                _txt(ax_r3, 0.36, 0.88 - j * 0.14, line, fs=7, color=TXT)
+
+        # Backtest
+        _box(ax_r3, 0.68, 0.0, 0.32, 1.0)
+        _txt(ax_r3, 0.70, 0.96, "BACKTEST RESULTS", fs=10, color=YEL, fw="bold")
+        if bt_result and bt_result.get('total_trades', 0) > 0:
+            blines = [
+                f"Capital:  ${bt_result.get('initial_capital', 0):,.0f} -> ${bt_result.get('final_capital', 0):,.0f}",
+                f"Return:   {bt_result.get('total_return_pct', 0):.2f}%",
+                f"B&H:      {bt_result.get('buy_hold_return_pct', 0):.2f}%",
+                f"Trades:   {bt_result.get('total_trades', 0)} (W:{bt_result.get('winning_trades', 0)}/L:{bt_result.get('losing_trades', 0)})",
+                f"Win Rate: {bt_result.get('win_rate', 0):.1f}%",
+                f"PF:       {bt_result.get('profit_factor', 0):.2f}",
+                f"Sharpe:   {bt_result.get('sharpe_ratio', 0):.2f}",
+                f"MaxDD:    {bt_result.get('max_drawdown', 0):.2f}%",
+            ]
+        else:
+            blines = ["No trades generated in backtest", f"B&H Return: {bt_result.get('buy_hold_return_pct', 0):.2f}%" if bt_result else "N/A"]
+        for j, line in enumerate(blines):
+            _txt(ax_r3, 0.70, 0.88 - j * 0.10, line, fs=7, color=TXT)
+
+        # --- Row 4: Risk Management + Disclaimer ---
+        ax_r4 = fig.add_axes([0.02, 0.005, 0.96, 0.05])
+        ax_r4.set_xlim(0, 1); ax_r4.set_ylim(0, 1); ax_r4.axis("off"); ax_r4.set_facecolor(BG)
+        risk_text = ("RISK: Never risk >2% per trade | Always set SL | Take partial profits (30/40/30) | "
+                     "Move SL to breakeven after TP1 | Check news before entry | "
+                     "DISCLAIMER: Educational purposes only. Not financial advice. Trading involves risk of loss.")
+        _txt(ax_r4, 0.5, 0.5, risk_text, fs=6, color=TD, ha="center", va="center")
+
     def generate(self, indicators: IndicatorValues, result: SignalResult,
                  enhanced_data: Dict[str, Any], output_path: str) -> str:
         if not HAS_MATPLOTLIB:
             return ""
-        print(f"[CHART] Generating two-panel chart (SMC + Trade Plan)...")
+        print(f"[CHART] Generating ALL-IN-ONE PNG (charts + all analysis)...")
 
         smc_buf = self._render_smc_to_buffer()
         smc_img = plt.imread(smc_buf)
 
-        fig = plt.figure(figsize=(32, 20), facecolor=C["bg"])
-        outer = gridspec.GridSpec(1, 2, width_ratios=[3, 2], wspace=0.03, figure=fig)
+        fig = plt.figure(figsize=(32, 40), facecolor=C["bg"])
 
-        ax_left = fig.add_subplot(outer[0])
-        ax_left.imshow(smc_img, aspect="auto")
-        ax_left.axis("off")
-
-        ax_right = fig.add_subplot(outer[1])
-        self._draw_trade_chart(ax_right, result, indicators)
-
+        # Title banner
+        ax_title = fig.add_axes([0.0, 0.965, 1.0, 0.035])
+        ax_title.set_xlim(0, 1); ax_title.set_ylim(0, 1); ax_title.axis("off"); ax_title.set_facecolor(C["bg"])
         sig_color = C["green"] if "BUY" in result.signal_type.value else C["red"] if "SELL" in result.signal_type.value else C["orange"]
-        fig.text(0.5, 0.99, f"SMA 20 TRADING BOT  |  {result.signal_type.value}  |  "
-                 f"Confidence: {result.confidence:.0f}%  |  "
-                 f"{self.candles[-1].timestamp.strftime('%Y-%m-%d %H:%M UTC')}",
-                 fontsize=15, fontweight="bold", color=sig_color, ha="center", va="top",
-                 bbox=dict(boxstyle="round,pad=0.4", fc=C["bg2"], ec=sig_color, alpha=0.95, lw=2))
+        ax_title.add_patch(plt.Rectangle((0.05, 0.05), 0.9, 0.9, fc=C["bg2"], ec=sig_color, lw=3,
+                                         transform=ax_title.transAxes, clip_on=False))
+        ax_title.text(0.5, 0.65, f"SMA 20 TRADING BOT  |  {result.signal_type.value}  |  "
+                      f"Confidence: {result.confidence:.0f}%  |  "
+                      f"{self.candles[-1].timestamp.strftime('%Y-%m-%d %H:%M UTC')}",
+                      fontsize=18, fontweight="bold", color=sig_color, ha="center", va="center",
+                      transform=ax_title.transAxes)
 
-        plt.savefig(output_path, dpi=150, bbox_inches="tight", facecolor=C["bg"], pad_inches=0.2,
+        # Row 0: Charts (SMC left, Trade Plan right)
+        ax_smc = fig.add_axes([0.01, 0.66, 0.54, 0.30])
+        ax_smc.imshow(smc_img, aspect="auto"); ax_smc.axis("off")
+
+        ax_trade = fig.add_axes([0.56, 0.66, 0.43, 0.30])
+        self._draw_trade_chart(ax_trade, result, indicators)
+
+        # Separator line
+        ax_sep = fig.add_axes([0.01, 0.655, 0.98, 0.003])
+        ax_sep.set_xlim(0, 1); ax_sep.set_ylim(0, 1); ax_sep.axis("off")
+        ax_sep.axhline(y=0.5, color=C["grid"], linewidth=2)
+
+        # Data sections
+        self._draw_data_section(fig, result, indicators, enhanced_data,
+                                getattr(self, '_bt_result', None))
+
+        plt.savefig(output_path, dpi=120, bbox_inches="tight", facecolor=C["bg"], pad_inches=0.15,
                     pil_kwargs={"antialias": "best"})
         plt.close(fig)
         print(f"[CHART] Saved: {output_path}")
@@ -5810,6 +6004,7 @@ def main():
     print("\n[PHASE 6/8] Generating PNG chart...")
     timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
     chart_gen = BeautifulChartGenerator(candles)
+    chart_gen._bt_result = bt_result
     png_path = os.path.join(os.path.dirname(__file__), f"sma20_analysis_{timestamp_str}.png")
     try:
         chart_gen.generate(generator.indicators, result, enhanced_data, png_path)
