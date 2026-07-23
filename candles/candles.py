@@ -62,6 +62,15 @@ def rsi(close, length=14):
     return 100 - (100 / (1 + avg_g / avg_l))
 
 
+def macd(close, fast=12, slow=26, signal=9):
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
+
 def pivots(df, left=5, right=5):
     h, l = df["High"].values, df["Low"].values
     n = len(h)
@@ -148,6 +157,7 @@ def export_candles(json_file, output_file="chart.png"):
     st2, d2 = supertrend(df, 10, 2.0)
     st3, d3 = supertrend(df, 10, 3.0)
     rv = rsi(df["Close"], 14)
+    macd_line, macd_signal, macd_hist = macd(df["Close"])
     ph, pl = pivots(df, 5, 5)
     sm = smart_money(df, 5)
 
@@ -186,11 +196,14 @@ def export_candles(json_file, output_file="chart.png"):
         mpf.make_addplot(rv, color=PURPLE, width=1.8, panel=2, ylabel="RSI"),
         mpf.make_addplot(rsi_70, color="#555555", width=0.8, linestyle="--", panel=2),
         mpf.make_addplot(rsi_30, color="#555555", width=0.8, linestyle="--", panel=2),
+        mpf.make_addplot(macd_hist, type="bar", color=[GREEN if v >= 0 else RED for v in macd_hist], panel=3, ylabel="MACD", width=0.7),
+        mpf.make_addplot(macd_line, color=BLUE, width=1.2, panel=3),
+        mpf.make_addplot(macd_signal, color=ORANGE, width=1.2, panel=3),
     ]
 
     dd1, dd2, dd3 = d1.iloc[-1], d2.iloc[-1], d3.iloc[-1]
 
-    fig, axes = mpf.plot(df, type="candle", style=style, volume=True, addplot=ap, figsize=(26, 18), panel_ratios=(5, 1.2, 1.5), tight_layout=True, xrotation=0, returnfig=True)
+    fig, axes = mpf.plot(df, type="candle", style=style, volume=True, addplot=ap, figsize=(26, 22), panel_ratios=(5, 1.2, 1.5, 1.5), tight_layout=True, xrotation=0, returnfig=True)
     for a in axes: a.set_facecolor(BG)
     ax = axes[0]
 
@@ -243,7 +256,7 @@ def export_candles(json_file, output_file="chart.png"):
             ax.add_patch(plt.Rectangle((i-0.5, b), e-i, t-b, facecolor="#f8514980", alpha=0.1, edgecolor=RED, linewidth=0.5))
 
     # Title
-    fig.text(0.5, 0.97, "SMART MONEY CONCEPTS  ·  TRIPLE SUPERTREND  ·  RSI", fontsize=14, fontweight="bold", color=TEXT, ha="center")
+    fig.text(0.5, 0.97, "SMART MONEY CONCEPTS  ·  TRIPLE SUPERTREND  ·  RSI  ·  MACD", fontsize=14, fontweight="bold", color=TEXT, ha="center")
 
     # Info panels
     def panel_box(ax, x, y, lines, title=None):
@@ -270,6 +283,24 @@ def export_candles(json_file, output_file="chart.png"):
     axes[2].text(0.01, 0.92, f"  RSI(14): {rsi_now:.1f}  {rsi_lbl}", transform=axes[2].transAxes, fontsize=10, fontfamily="monospace",
                  va="top", color=rsi_clr, fontweight="bold")
     axes[2].set_ylabel("RSI", color=TEXT, fontsize=10)
+
+    # MACD panel info
+    macd_now = macd_line.iloc[-1]
+    signal_now = macd_signal.iloc[-1]
+    hist_now = macd_hist.iloc[-1]
+    macd_clr = GREEN if macd_now > signal_now else RED
+    macd_lbl = "BULLISH" if macd_now > signal_now else "BEARISH"
+    cross_lbl = ""
+    if len(macd_hist) > 1:
+        prev_hist = macd_hist.iloc[-2]
+        if hist_now > 0 and prev_hist <= 0:
+            cross_lbl = "  [CROSSUP]"
+        elif hist_now < 0 and prev_hist >= 0:
+            cross_lbl = "  [CROSSDN]"
+    axes[3].text(0.01, 0.92, f"  MACD(12,26,9): {macd_now:.4f}  {macd_lbl}{cross_lbl}", transform=axes[3].transAxes, fontsize=10, fontfamily="monospace",
+                 va="top", color=macd_clr, fontweight="bold")
+    axes[3].axhline(y=0, color="#555555", linewidth=0.8, linestyle="--")
+    axes[3].set_ylabel("MACD", color=TEXT, fontsize=10)
 
     fig.savefig(output_file, dpi=600, bbox_inches="tight", facecolor=BG, pad_inches=0.3, pil_kwargs={"antialias": "best"})
     print(f"Saved: {output_file}")
