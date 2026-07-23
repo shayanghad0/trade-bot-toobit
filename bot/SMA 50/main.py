@@ -4228,6 +4228,11 @@ class BeautifulChartGenerator:
         gain = delta.clip(lower=0).ewm(span=14, adjust=False).mean()
         loss = (-delta.clip(upper=0)).ewm(span=14, adjust=False).mean()
         rv = 100 - (100 / (1 + gain / loss))
+        macd_ema_fast = pd.Series(self.closes).ewm(span=12, adjust=False).mean()
+        macd_ema_slow = pd.Series(self.closes).ewm(span=26, adjust=False).mean()
+        macd_line = macd_ema_fast - macd_ema_slow
+        macd_signal = macd_line.ewm(span=9, adjust=False).mean()
+        macd_hist = macd_line - macd_signal
         ph, pl = self._pivots(pd.Series(self.highs), pd.Series(self.lows), 5, 5)
         sm = self._smart_money(5)
 
@@ -4259,6 +4264,9 @@ class BeautifulChartGenerator:
             mpf.make_addplot(rv, color=PRP, width=1.8, panel=2, ylabel="RSI"),
             mpf.make_addplot(rsi_70, color="#555555", width=0.8, linestyle="--", panel=2),
             mpf.make_addplot(rsi_30, color="#555555", width=0.8, linestyle="--", panel=2),
+            mpf.make_addplot(macd_hist, type="bar", color=[GRN if v >= 0 else RED for v in macd_hist], panel=3, ylabel="MACD", width=0.7),
+            mpf.make_addplot(macd_line, color=BLU, width=1.2, panel=3),
+            mpf.make_addplot(macd_signal, color=ORG, width=1.2, panel=3),
         ]
 
         mc = mpf.make_marketcolors(up=GRN, down=RED, edge={"up": GRN, "down": RED},
@@ -4270,7 +4278,7 @@ class BeautifulChartGenerator:
                                         "figure.facecolor": BG, "savefig.facecolor": BG})
 
         fig, axes = mpf.plot(df, type="candle", style=style, volume=True, addplot=ap,
-                              figsize=(26, 18), panel_ratios=(5, 1.2, 1.5),
+                              figsize=(26, 22), panel_ratios=(5, 1.2, 1.5, 1.5),
                               tight_layout=True, xrotation=0, returnfig=True)
         for a in axes:
             a.set_facecolor(BG)
@@ -4310,7 +4318,7 @@ class BeautifulChartGenerator:
                 e = next((j for j in range(i+1, len(df)) if hv[j] >= t), len(df))
                 ax.add_patch(plt.Rectangle((i-0.5, b), e-i, t-b, facecolor=RED, alpha=0.1, edgecolor=RED, linewidth=0.5))
 
-        fig.text(0.5, 0.97, "SMART MONEY CONCEPTS  \u00b7  TRIPLE SUPERTREND  \u00b7  RSI",
+        fig.text(0.5, 0.97, "SMART MONEY CONCEPTS  \u00b7  TRIPLE SUPERTREND  \u00b7  RSI  \u00b7  MACD",
                  fontsize=14, fontweight="bold", color=TXT, ha="center")
         rsi_now = rv.iloc[-1]
         rsi_clr = RED if rsi_now > 70 else GRN if rsi_now < 30 else ORG
@@ -4318,6 +4326,23 @@ class BeautifulChartGenerator:
         axes[2].text(0.01, 0.92, f"  RSI(14): {rsi_now:.1f}  {rsi_lbl}", transform=axes[2].transAxes,
                      fontsize=10, fontfamily="monospace", va="top", color=rsi_clr, fontweight="bold")
         axes[2].set_ylabel("RSI", color=TXT, fontsize=10)
+
+        macd_now = macd_line.iloc[-1]
+        signal_now = macd_signal.iloc[-1]
+        hist_now = macd_hist.iloc[-1]
+        macd_clr = GRN if macd_now > signal_now else RED
+        macd_lbl = "BULLISH" if macd_now > signal_now else "BEARISH"
+        cross_lbl = ""
+        if len(macd_hist) > 1:
+            prev_hist = macd_hist.iloc[-2]
+            if hist_now > 0 and prev_hist <= 0:
+                cross_lbl = "  [CROSSUP]"
+            elif hist_now < 0 and prev_hist >= 0:
+                cross_lbl = "  [CROSSDN]"
+        axes[3].text(0.01, 0.92, f"  MACD(12,26,9): {macd_now:.4f}  {macd_lbl}{cross_lbl}", transform=axes[3].transAxes,
+                     fontsize=10, fontfamily="monospace", va="top", color=macd_clr, fontweight="bold")
+        axes[3].axhline(y=0, color="#555555", linewidth=0.8, linestyle="--")
+        axes[3].set_ylabel("MACD", color=TXT, fontsize=10)
 
         buf = io.BytesIO()
         fig.savefig(buf, dpi=150, bbox_inches="tight", facecolor=BG, pad_inches=0.3)
