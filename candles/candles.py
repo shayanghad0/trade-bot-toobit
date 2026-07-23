@@ -182,24 +182,25 @@ def export_candles(json_file, output_file="chart.png"):
     rsi_70 = pd.Series([70] * len(df), index=df.index)
     rsi_30 = pd.Series([30] * len(df), index=df.index)
 
-    ap = [
-        mpf.make_addplot(s1u, color=GREEN, width=2.5),
-        mpf.make_addplot(s1d, color=RED, width=2.5),
-        mpf.make_addplot(s2u, color=GREEN, width=1.5, linestyle="--"),
-        mpf.make_addplot(s2d, color=RED, width=1.5, linestyle="--"),
-        mpf.make_addplot(s3u, color=GREEN, width=1, linestyle=":"),
-        mpf.make_addplot(s3d, color=RED, width=1, linestyle=":"),
-        mpf.make_addplot(pln, color=BLUE, width=1.8, linestyle="--"),
-        mpf.make_addplot(pll, color=ORANGE, width=1.8, linestyle="--"),
-        mpf.make_addplot(ph, type="scatter", marker="v", markersize=50, color=RED),
-        mpf.make_addplot(pl, type="scatter", marker="^", markersize=50, color=GREEN),
-        mpf.make_addplot(rv, color=PURPLE, width=1.8, panel=2, ylabel="RSI"),
-        mpf.make_addplot(rsi_70, color="#555555", width=0.8, linestyle="--", panel=2),
-        mpf.make_addplot(rsi_30, color="#555555", width=0.8, linestyle="--", panel=2),
-        mpf.make_addplot(macd_hist, type="bar", color=[GREEN if v >= 0 else RED for v in macd_hist], panel=3, ylabel="MACD", width=0.7),
-        mpf.make_addplot(macd_line, color=BLUE, width=1.2, panel=3),
-        mpf.make_addplot(macd_signal, color=ORANGE, width=1.2, panel=3),
+    raw_ap = [
+        (s1u, dict(color=GREEN, width=2.5)),
+        (s1d, dict(color=RED, width=2.5)),
+        (s2u, dict(color=GREEN, width=1.5, linestyle="--")),
+        (s2d, dict(color=RED, width=1.5, linestyle="--")),
+        (s3u, dict(color=GREEN, width=1, linestyle=":")),
+        (s3d, dict(color=RED, width=1, linestyle=":")),
+        (pln, dict(color=BLUE, width=1.8, linestyle="--")),
+        (pll, dict(color=ORANGE, width=1.8, linestyle="--")),
+        (ph, dict(type="scatter", marker="v", markersize=50, color=RED)),
+        (pl, dict(type="scatter", marker="^", markersize=50, color=GREEN)),
+        (rv, dict(color=PURPLE, width=1.8, panel=2, ylabel="RSI")),
+        (rsi_70, dict(color="#555555", width=0.8, linestyle="--", panel=2)),
+        (rsi_30, dict(color="#555555", width=0.8, linestyle="--", panel=2)),
+        (macd_hist, dict(type="bar", color=[GREEN if v >= 0 else RED for v in macd_hist], panel=3, ylabel="MACD", width=0.7)),
+        (macd_line, dict(color=BLUE, width=1.2, panel=3)),
+        (macd_signal, dict(color=ORANGE, width=1.2, panel=3)),
     ]
+    ap = [mpf.make_addplot(d, **kw) for d, kw in raw_ap if not (isinstance(d, pd.Series) and d.isna().all()) and not (isinstance(d, np.ndarray) and np.all(np.isnan(d)))]
 
     dd1, dd2, dd3 = d1.iloc[-1], d2.iloc[-1], d3.iloc[-1]
 

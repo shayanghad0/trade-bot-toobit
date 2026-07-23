@@ -4252,22 +4252,23 @@ class BeautifulChartGenerator:
         rsi_70 = pd.Series([70] * len(df), index=df.index)
         rsi_30 = pd.Series([30] * len(df), index=df.index)
 
-        ap = [
-            mpf.make_addplot(s1u, color=GRN, width=2.5),
-            mpf.make_addplot(s1d, color=RED, width=2.5),
-            mpf.make_addplot(s2u, color=GRN, width=1.5, linestyle="--"),
-            mpf.make_addplot(s2d, color=RED, width=1.5, linestyle="--"),
-            mpf.make_addplot(s3u, color=GRN, width=1, linestyle=":"),
-            mpf.make_addplot(s3d, color=RED, width=1, linestyle=":"),
-            mpf.make_addplot(ph, type="scatter", marker="v", markersize=50, color=RED),
-            mpf.make_addplot(pl, type="scatter", marker="^", markersize=50, color=GRN),
-            mpf.make_addplot(rv, color=PRP, width=1.8, panel=2, ylabel="RSI"),
-            mpf.make_addplot(rsi_70, color="#555555", width=0.8, linestyle="--", panel=2),
-            mpf.make_addplot(rsi_30, color="#555555", width=0.8, linestyle="--", panel=2),
-            mpf.make_addplot(macd_hist, type="bar", color=[GRN if v >= 0 else RED for v in macd_hist], panel=3, ylabel="MACD", width=0.7),
-            mpf.make_addplot(macd_line, color=BLU, width=1.2, panel=3),
-            mpf.make_addplot(macd_signal, color=ORG, width=1.2, panel=3),
+        raw_ap = [
+            (s1u, dict(color=GRN, width=2.5)),
+            (s1d, dict(color=RED, width=2.5)),
+            (s2u, dict(color=GRN, width=1.5, linestyle="--")),
+            (s2d, dict(color=RED, width=1.5, linestyle="--")),
+            (s3u, dict(color=GRN, width=1, linestyle=":")),
+            (s3d, dict(color=RED, width=1, linestyle=":")),
+            (ph, dict(type="scatter", marker="v", markersize=50, color=RED)),
+            (pl, dict(type="scatter", marker="^", markersize=50, color=GRN)),
+            (rv, dict(color=PRP, width=1.8, panel=2, ylabel="RSI")),
+            (rsi_70, dict(color="#555555", width=0.8, linestyle="--", panel=2)),
+            (rsi_30, dict(color="#555555", width=0.8, linestyle="--", panel=2)),
+            (macd_hist, dict(type="bar", color=[GRN if v >= 0 else RED for v in macd_hist], panel=3, ylabel="MACD", width=0.7)),
+            (macd_line, dict(color=BLU, width=1.2, panel=3)),
+            (macd_signal, dict(color=ORG, width=1.2, panel=3)),
         ]
+        ap = [mpf.make_addplot(d, **kw) for d, kw in raw_ap if not (isinstance(d, pd.Series) and d.isna().all()) and not (isinstance(d, np.ndarray) and np.all(np.isnan(d)))]
 
         mc = mpf.make_marketcolors(up=GRN, down=RED, edge={"up": GRN, "down": RED},
                                     wick={"up": GRN, "down": RED}, volume={"up": GRN, "down": RED})
@@ -4776,11 +4777,11 @@ class BeautifulPDFGenerator:
                 f"Size:        {result.position_size_pct:.2f}% portfolio",
             ]),
             ("TRADE PLAN", C["yellow"], [
-                f"Entry:       {result.entry_price:.2f}",
-                f"Stop Loss:   {result.stop_loss:.2f}  ({abs(result.entry_price - result.stop_loss) / result.entry_price * 100:.2f}%)",
-                f"TP1:         {result.take_profit_1:.2f}  ({abs(result.take_profit_1 - result.entry_price) / result.entry_price * 100:.2f}%)",
-                f"TP2:         {result.take_profit_2:.2f}",
-                f"TP3:         {result.take_profit_3:.2f}",
+                f"Entry:       {result.entry_price:.2f}" if result.entry_price else "Entry:       N/A (HOLD)",
+                f"Stop Loss:   {result.stop_loss:.2f}  ({abs(result.entry_price - result.stop_loss) / result.entry_price * 100:.2f}%)" if result.entry_price else "Stop Loss:   N/A",
+                f"TP1:         {result.take_profit_1:.2f}  ({abs(result.take_profit_1 - result.entry_price) / result.entry_price * 100:.2f}%)" if result.entry_price else "TP1:         N/A",
+                f"TP2:         {result.take_profit_2:.2f}" if result.take_profit_2 else "TP2:         N/A",
+                f"TP3:         {result.take_profit_3:.2f}" if result.take_profit_3 else "TP3:         N/A",
                 f"Risk/Reward: {result.risk_reward_ratio:.2f}",
             ]),
             ("REASONS", C["cyan"], [f"{'+' if any(w in r.upper() for w in ['BULL','BUY','ABOVE','POSITIVE']) else '-'} {r}" for r in result.reasons[:8]]),
