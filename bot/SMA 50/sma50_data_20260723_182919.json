@@ -1,0 +1,130 @@
+{
+  "analysis_time": "2026-07-23T14:59:19.060112+00:00",
+  "signal": {
+    "type": "SELL",
+    "confidence": 50,
+    "spot_action": "SELL",
+    "futures_action": "SHORT",
+    "leverage_suggestion": "10x-20x (Strong trend)",
+    "entry_price": 65616.63,
+    "stop_loss": 65745.65483688499,
+    "take_profit_1": 65590.13,
+    "take_profit_2": 65585.11,
+    "take_profit_3": 65574.505,
+    "risk_reward_ratio": 0.21,
+    "position_size_pct": 0.96,
+    "trend_direction": "STRONG DOWNTREND",
+    "market_phase": "DISTRIBUTION",
+    "reasons": [
+      "Price (65616.63) is BELOW SMA50 (66122.24) - bearish bias",
+      "Price (65616.63) is BELOW SMA50 (66122.24) - bearish bias",
+      "MACD (-149.3458) below Signal (124.1861) - bearish momentum",
+      "BB squeeze detected - breakout imminent",
+      "ADX (78.6) -DI > +DI - strong downtrend",
+      "OBV below its SMA - volume supports downtrend",
+      "Price (65616.63) below VWAP (66148.37) - bearish",
+      "Momentum (-427.55) negative - downward pressure",
+      "Strong downtrend confirmed by multiple indicators",
+      "Market in DISTRIBUTION phase - smart money selling"
+    ],
+    "warnings": [
+      "Low volatility - breakout may be imminent"
+    ],
+    "support_levels": [
+      65590.13,
+      65585.11,
+      65574.505,
+      65570.12,
+      65554.01
+    ],
+    "resistance_levels": [
+      65661.07,
+      65665.99,
+      65738.69333333334,
+      65738.99,
+      65790.0
+    ],
+    "patterns_detected": []
+  },
+  "indicators": {
+    "SMA50": "66122.24",
+    "SMA50 Slope": "66122.24",
+    "RSI(14)": "42.48",
+    "MACD": "-149.3458",
+    "MACD Signal": "124.1861",
+    "MACD Histogram": "-273.5319",
+    "BB Upper": "66278.20",
+    "BB Lower": "65474.56",
+    "BB Width": "1.22%",
+    "ATR(14)": "281.95",
+    "ATR %": "0.43%",
+    "Stoch K": "27.67",
+    "Stoch D": "22.28",
+    "ADX": "78.57",
+    "+DI": "0.00",
+    "-DI": "0.00",
+    "CCI(20)": "-133.30",
+    "MFI(14)": "45.23",
+    "Williams %R": "-72.33",
+    "VWAP": "66148.37",
+    "Momentum": "-427.55",
+    "ROC": "-0.65%",
+    "OBV Trend": "Down",
+    "Volume Ratio": "0.94",
+    "Buy Pressure": "54.46%"
+  },
+  "volume_analysis": "Current Volume: 300.82\nAverage Volume: 321.71\nVolume Ratio: 0.94x\nBuy Pressure: 54.5%\nVolume Trend: NORMAL\nDivergence: NONE\nAccumulation: NO\nDistribution: NO",
+  "multi_timeframe": {
+    "1H": {
+      "trend": "NEUTRAL",
+      "signal": "HOLD",
+      "sma50": 66122.24059999999,
+      "rsi": 42.47823176861985
+    },
+    "4H": {
+      "trend": "INSUFFICIENT DATA",
+      "signal": "HOLD",
+      "sma50": 0,
+      "rsi": 50
+    },
+    "1D": {
+      "trend": "INSUFFICIENT DATA",
+      "signal": "HOLD",
+      "sma50": 0,
+      "rsi": 50
+    }
+  },
+  "market_regime": {
+    "regime": "CALM TREND",
+    "strategy": "Trend following with normal stops"
+  },
+  "volatility": {
+    "historical_volatility": 4.96,
+    "sharpe_ratio": -2.83,
+    "max_drawdown_pct": 2.09
+  },
+  "confidence": {
+    "pct": 34.8,
+    "rating": "LOW",
+    "factors": {
+      "trend_strength": 5,
+      "market_phase": 5,
+      "indicator_alignment": 8,
+      "candlestick_patterns": 0,
+      "volume_analysis": 0,
+      "timeframe_alignment": 4,
+      "market_regime": 8,
+      "fibonacci_position": 1,
+      "wave_structure": 5,
+      "order_flow": 2,
+      "risk_metrics": 2
+    }
+  },
+  "backtest": {
+    "total_return_pct": 0.0,
+    "win_rate": 0,
+    "profit_factor": Infinity,
+    "max_drawdown": 0.0,
+    "total_trades": 0
+  }
+}

@@ -4,7 +4,9 @@ Indicators & Strategies we need for trading bot:
 
 [SMA 20 : Trend direction & dynamic support/resistance](<SMA 20/main.py>)
 
-SMA 50/100/120 : Trend direction & dynamic support/resistance
+[SMA 50 : Trend direction & dynamic support/resistance](<SMA 50/main.py>)
+
+SMA 100/120 : Trend direction & dynamic support/resistance
 
 EMA 12/26 : Faster trend response, MACD components
 
