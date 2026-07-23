@@ -1,5 +1,18 @@
 [
   {
+    "open_time": 1783008000000,
+    "open": "0.1608",
+    "high": "0.1626",
+    "low": "0.1587",
+    "close": "0.1597",
+    "volume": "7899618.8",
+    "ignore": 0,
+    "quote_volume": "1264556.89641",
+    "trades": 2804,
+    "taker_buy_volume": "4251827.8",
+    "taker_buy_quote_volume": "681397.38206"
+  },
+  {
     "open_time": 1783022400000,
     "open": "0.1597",
     "high": "0.163",
@@ -1603,25 +1616,12 @@
     "open": "0.173",
     "high": "0.1759",
     "low": "0.1726",
-    "close": "0.1743",
-    "volume": "2418815.9",
+    "close": "0.1759",
+    "volume": "2023481.1",
     "ignore": 0,
-    "quote_volume": "421487.06692",
-    "trades": 1599,
-    "taker_buy_volume": "1150289.2",
-    "taker_buy_quote_volume": "200285.24105"
-  },
-  {
-    "open_time": 1784808000000,
-    "open": "0.1743",
-    "high": "0.1752",
-    "low": "0.1681",
-    "close": "0.1684",
-    "volume": "6553023.1",
-    "ignore": 0,
-    "quote_volume": "1121796.8241",
-    "trades": 2865,
-    "taker_buy_volume": "3518514",
-    "taker_buy_quote_volume": "601660.27096"
+    "quote_volume": "352448.13487",
+    "trades": 1336,
+    "taker_buy_volume": "996091.8",
+    "taker_buy_quote_volume": "173341.71825"
   }
 ]
